@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 from babel.numbers import format_currency
-sns.set(style='dark')
 
 all_df = pd.read_csv("data.csv")
 
@@ -64,6 +63,28 @@ def create_pm25_aggregation(df, freq):
 
     return agg_df[["period", "avg_pm25"]]
 
+station_summary = (
+    filtered_df
+    .groupby("station")["PM2.5"]
+    .mean()
+    .reset_index()
+    .rename(columns={"PM2.5": "avg_pm25"})
+)
+
+top5_worst = (
+    station_summary
+    .sort_values(by="avg_pm25", ascending=False)
+    .head(5)
+    .set_index("station")
+)
+
+top5_best = (
+    station_summary
+    .sort_values(by="avg_pm25", ascending=True)
+    .head(5)
+    .set_index("station")
+)
+
 # Visualization
 ## Daily PM2.5 Metrics
 daily_pm25_df = create_daily_pm25_df(filtered_df)
@@ -101,3 +122,154 @@ with col1:
 with col2:
     st.markdown("### 🗓 Monthly Trend")
     st.line_chart(monthly_df, x="period", y="avg_pm25", use_container_width=True)
+
+## Station-wise PM2.5 Analysis
+st.subheader("Worst and Best Air Quality Stations")
+
+fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(16, 6))
+
+colors = ["#90CAF9"] + ["#D3D3D3"] * 4
+
+# 🔺 Worst (Highest PM2.5)
+sns.barplot(
+    x="avg_pm25",
+    y="station",
+    data=top5_worst,
+    palette=colors,
+    ax=ax[0]
+)
+
+ax[0].set_title("Worst Air Quality Stations")
+ax[0].set_xlabel("Average PM2.5")
+ax[0].set_ylabel("")
+
+# 🔻 Best (Lowest PM2.5)
+sns.barplot(
+    x="avg_pm25",
+    y="station",
+    data=top5_best,
+    palette=colors,
+    ax=ax[1]
+)
+
+# Reverse X-axis to match your reference image
+ax[1].invert_xaxis()
+
+ax[1].set_title("Best Air Quality Stations")
+ax[1].set_xlabel("Average PM2.5")
+ax[1].set_ylabel("")
+
+plt.tight_layout()
+
+st.pyplot(fig)
+
+st.subheader("Distribution of AQI Categories")
+
+# Count AQI categories
+aqi_counts = (
+    filtered_df["AQI_Category"]
+    .value_counts()
+    .reset_index()
+)
+
+aqi_counts.columns = ["AQI_Category", "count"]
+
+# Create blue gradient palette
+colors = sns.color_palette("Blues", n_colors=len(aqi_counts))
+
+fig, ax = plt.subplots(figsize=(10, 6))
+
+sns.barplot(
+    x="AQI_Category",
+    y="count",
+    data=aqi_counts,
+    palette=colors,
+    ax=ax
+)
+
+ax.set_title("Distribution of AQI Categories")
+ax.set_xlabel("AQI Category")
+ax.set_ylabel("Count")
+
+plt.tight_layout()
+st.pyplot(fig)
+
+def get_top5_by_category(df, category):
+    category_df = df[df["AQI_Category"] == category]
+
+    top5 = (
+        category_df
+        .groupby("station")
+        .size()
+        .reset_index(name="count")
+        .sort_values("count", ascending=False)
+        .head(5)
+    )
+
+    return top5
+
+top_good = get_top5_by_category(filtered_df, "Good")
+top_moderate = get_top5_by_category(filtered_df, "Moderate")
+top_unhealthy = get_top5_by_category(filtered_df, "Unhealthy")
+top_hazardous = get_top5_by_category(filtered_df, "Hazardous")
+
+st.subheader("Top 5 Stations per AQI Category")
+
+fig, ax = plt.subplots(nrows=2, ncols=2, figsize=(16, 10))
+
+# Color palette per category
+palette = {
+    "Good": "#2E7D32",
+    "Moderate": "#FDD835",
+    "Unhealthy": "#FB8C00",
+    "Hazardous": "#E53935"
+}
+
+# --- Good ---
+sns.barplot(
+    data=top_good,
+    x="count",
+    y="station",
+    color=palette["Good"],
+    ax=ax[0,0]
+)
+ax[0,0].set_title("Top 5 Good AQI")
+
+# --- Moderate ---
+sns.barplot(
+    data=top_moderate,
+    x="count",
+    y="station",
+    color=palette["Moderate"],
+    ax=ax[0,1]
+)
+ax[0,1].set_title("Top 5 Moderate AQI")
+
+# --- Unhealthy ---
+sns.barplot(
+    data=top_unhealthy,
+    x="count",
+    y="station",
+    color=palette["Unhealthy"],
+    ax=ax[1,0]
+)
+ax[1,0].set_title("Top 5 Unhealthy AQI")
+
+# --- Hazardous ---
+sns.barplot(
+    data=top_hazardous,
+    x="count",
+    y="station",
+    color=palette["Hazardous"],
+    ax=ax[1,1]
+)
+ax[1,1].set_title("Top 5 Hazardous AQI")
+
+for a in ax.flat:
+    a.set_xlabel("Count")
+    a.set_ylabel("")
+    a.tick_params(axis='y', labelsize=9)
+
+plt.tight_layout()
+st.pyplot(fig)
+
