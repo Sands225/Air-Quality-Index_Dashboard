@@ -41,8 +41,38 @@ def create_daily_pm25_df(df):
 
     return daily_pm25_df
 
+def create_pm25_aggregation(df, freq):
+    agg_df = (
+        df
+        .resample(rule=freq, on="datetime")
+        .agg({"PM2.5": "mean"})
+        .reset_index()
+        .rename(columns={"PM2.5": "avg_pm25"})
+    )
+
+    if freq == "Y":
+        agg_df["period"] = agg_df["datetime"].dt.year
+
+    elif freq == "M":
+        agg_df["period"] = agg_df["datetime"].dt.strftime("%Y-%m")
+
+    elif freq == "D":
+        agg_df["period"] = agg_df["datetime"].dt.date
+
+    elif freq == "H":
+        agg_df["period"] = agg_df["datetime"].dt.hour
+
+    return agg_df[["period", "avg_pm25"]]
+
 # Visualization
+## Daily PM2.5 Metrics
 daily_pm25_df = create_daily_pm25_df(filtered_df)
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Avg PM2.5", f"{daily_pm25_df['avg_pm25'].mean():.2f}")
+col3.metric("Min PM2.5", f"{daily_pm25_df['avg_pm25'].min():.2f}")
+col2.metric("Max PM2.5", f"{daily_pm25_df['avg_pm25'].max():.2f}")
 
 st.subheader("📈 PM2.5 Daily Trend")
 
@@ -55,3 +85,19 @@ else:
         y="avg_pm25",
         use_container_width=True
     )
+
+# PM2.5 Trend Analysis
+yearly_df  = create_pm25_aggregation(filtered_df, "Y")
+monthly_df = create_pm25_aggregation(filtered_df, "M")
+
+st.subheader("📊 PM2.5 Trend Analysis")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.markdown("### 📅 Yearly Trend")
+    st.line_chart(yearly_df, x="period", y="avg_pm25", use_container_width=True)
+
+with col2:
+    st.markdown("### 🗓 Monthly Trend")
+    st.line_chart(monthly_df, x="period", y="avg_pm25", use_container_width=True)
