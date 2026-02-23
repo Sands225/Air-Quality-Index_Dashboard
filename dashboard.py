@@ -273,3 +273,48 @@ for a in ax.flat:
 plt.tight_layout()
 st.pyplot(fig)
 
+pm25_waktu = (
+    filtered_df
+    .groupby("waktu")["PM2.5"]
+    .mean()
+    .reset_index()
+    .rename(columns={"PM2.5": "avg_pm25"})
+)
+pm25_waktu = pm25_waktu.sort_values("avg_pm25", ascending=False)
+
+st.subheader("📊 Average PM2.5 by Time of Day")
+
+col1, col2 = st.columns([2,1])  # kiri lebih besar
+
+# -------------------
+# 📊 LEFT SIDE (Chart)
+# -------------------
+with col1:
+    fig, ax = plt.subplots(figsize=(8,5))
+
+    sns.barplot(
+        data=pm25_waktu,
+        x="avg_pm25",
+        y="waktu",
+        palette="Blues_r",
+        ax=ax
+    )
+
+    ax.set_xlabel("Average PM2.5")
+    ax.set_ylabel("")
+    ax.set_title("Average PM2.5 by Time Category")
+
+    plt.tight_layout()
+    st.pyplot(fig)
+
+# -------------------
+# 📋 RIGHT SIDE (Text Summary)
+# -------------------
+with col2:
+    st.markdown("### 📌 Detail")
+
+    for _, row in pm25_waktu.iterrows():
+        st.markdown(f"""
+        **{row['waktu'].capitalize()}**  
+        PM2.5: **{row['avg_pm25']:.2f}**
+        """)
