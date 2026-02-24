@@ -8,7 +8,7 @@ st.set_page_config(layout="wide")
 
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data.csv")
+    df = pd.read_csv("dashboard/data.csv")
     df["datetime"] = pd.to_datetime(df["datetime"])
     return df
 
