@@ -212,7 +212,7 @@ top1_best = top5_best.iloc[0]
 col1, col2 = st.columns([2, 1])
 
 with col1:
-    fig, ax = plt.subplots(1, 2, figsize=(14, 5))
+    fig, ax = plt.subplots(1, 2, figsize=(14, 7))
 
     worst_palette = ["#D32F2F"] + ["#D3D3D3"] * (len(top5_worst) - 1)
 
@@ -247,8 +247,8 @@ with col2:
 
     st.markdown(
         f"""
-        <h4 style="color:#D32F2F; margin-bottom:5px;">Worst Station</h4>
-        <p style="font-size:20px; font-weight:bold; margin:0;">
+        <h4 style="color:#D32F2F;">Worst Station</h4>
+        <p style="font-size:14px; font-weight:bold; margin:0;">
             {top1_worst['station']}
         </p>
         <p style="margin-top:2px;">
@@ -262,8 +262,8 @@ with col2:
 
     st.markdown(
         f"""
-        <h4 style="color:#2E7D32; margin-bottom:5px;">Best Station</h4>
-        <p style="font-size:20px; font-weight:bold; margin:0;">
+        <h4 style="color:#2E7D32;">Best Station</h4>
+        <p style="font-size:14px; font-weight:bold; margin:0;">
             {top1_best['station']}
         </p>
         <p style="margin-top:2px;">
@@ -292,7 +292,14 @@ category_colors = {
 # AQI DISTRIBUTION
 def show_aqi_distribution(filtered_df, category_colors):
 
-    st.subheader("AQI Distribution")
+    st.markdown(
+        """
+        <h3 style="text-align:center; margin-bottom:20px;">
+            AQI Distribution
+        </h3>
+        """,
+        unsafe_allow_html=True
+    )
 
     category_order = ["Low Pollution", "Moderate Pollution", "High Pollution"]
 
@@ -392,8 +399,6 @@ def show_top_station(filtered_df, category, category_colors):
     top_station_name = top_df.iloc[0]["station"]
     top_value = int(top_df.iloc[0]["count"])
 
-    st.markdown("---")
-
     colA, colB = st.columns(2)
 
     with colA:
@@ -414,9 +419,14 @@ sp1, col_center, sp2 = st.columns([1,2,1])
 with col_center:
     show_aqi_distribution(filtered_df, category_colors)
 
-st.markdown("---")
-
-st.subheader("AQI Category Distribution per Station")
+st.markdown(
+    """
+    <h3 style="text-align:center; margin-top:20px; margin-bottom:20px;">
+        AQI Category Distribution per Station
+    </h3>
+    """,
+    unsafe_allow_html=True
+)
 
 # Low | Moderate | High
 col1, col2, col3 = st.columns(3)
