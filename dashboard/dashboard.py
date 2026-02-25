@@ -56,7 +56,7 @@ def station_summary(df):
 
 def get_top_stations_by_category(df, category):
     return (
-        df[df["AQI_Category"] == category]
+        df[df["Cluster Label"] == category]
         .groupby("station")
         .size()
         .reset_index(name="count")
@@ -283,24 +283,21 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-col1, col2, col3 = st.columns([1.65, 1, 1])
-
 category_colors = {
-    "Good": "#2E7D32",
-    "Moderate": "#F9A825",
-    "Unhealthy": "#EF6C00",
-    "Hazardous": "#C62828"
+    "Low Pollution": "#2E7D32",
+    "Moderate Pollution": "#F9A825",
+    "High Pollution": "#EF6C00",
 }
 
+# AQI DISTRIBUTION
+def show_aqi_distribution(filtered_df, category_colors):
 
-with col1:
-    st.markdown("### AQI Distribution")
+    st.subheader("AQI Distribution")
 
-    category_order = ["Good", "Moderate", "Unhealthy", "Hazardous"]
+    category_order = ["Low Pollution", "Moderate Pollution", "High Pollution"]
 
     aqi_counts = (
-        filtered_df["AQI_Category"]
+        filtered_df["Cluster Label"]
         .value_counts(normalize=True) * 100
     )
 
@@ -310,86 +307,128 @@ with col1:
         .reset_index()
     )
 
-    aqi_counts.columns = ["AQI_Category", "percentage"]
+    aqi_counts.columns = ["Cluster Label", "percentage"]
 
-    colors = [category_colors.get(cat, "#D3D3D3") for cat in aqi_counts["AQI_Category"]]
+    colors = [
+        category_colors.get(cat, "#D3D3D3")
+        for cat in aqi_counts["Cluster Label"]
+    ]
 
-    fig, ax = plt.subplots(figsize=(6,5))
+    col_chart, col_detail = st.columns([3, 1])
+
+    # Chart Section
+    with col_chart:
+        fig, ax = plt.subplots(figsize=(6,5))
+
+        sns.barplot(
+            data=aqi_counts,
+            x="Cluster Label",
+            y="percentage",
+            palette=colors,
+            ax=ax
+        )
+
+        ax.set_ylabel("Percentage (%)")
+        ax.set_xlabel("")
+        ax.set_title("Distribution by AQI Category",
+                     fontsize=12,
+                     weight="bold")
+
+        plt.xticks(rotation=20)
+        sns.despine()
+        plt.tight_layout()
+
+        st.pyplot(fig)
+
+    # Detail Section
+    with col_detail:
+        st.markdown("#### Summary")
+
+        for _, row in aqi_counts.iterrows():
+            category = row["Cluster Label"]
+            percent = row["percentage"]
+
+            st.metric(
+                label=category,
+                value=f"{percent:.1f}%"
+            )
+
+def show_top_station(filtered_df, category, category_colors):
+
+    st.markdown(f"### {category}")
+
+    top_df = get_top_stations_by_category(filtered_df, category)
+
+    if top_df.empty:
+        st.info("No data")
+        return
+
+    color = category_colors.get(category, "#000000")
+
+    palette = [color] + ["#E8E8E8"] * (len(top_df) - 1)
+
+    # Chart Section
+    fig, ax = plt.subplots(figsize=(4,3))
 
     sns.barplot(
-        data=aqi_counts,
-        x="AQI_Category",
-        y="percentage",
-        palette=colors,
+        data=top_df,
+        x="count",
+        y="station",
+        palette=palette,
         ax=ax
     )
 
-    ax.set_ylabel("Percentage (%)")
     ax.set_xlabel("")
-    ax.set_title("Distribution by AQI Category", fontsize=12, weight="bold")
+    ax.set_ylabel("")
+    ax.tick_params(labelsize=8)
+    sns.despine(left=True, bottom=True)
 
-    plt.xticks(rotation=20)
     plt.tight_layout()
     st.pyplot(fig)
 
+    # Detail Section
+    total_count = int(top_df["count"].sum())
+    unique_station = int(top_df["station"].nunique())
+    top_station_name = top_df.iloc[0]["station"]
+    top_value = int(top_df.iloc[0]["count"])
+
+    st.markdown("---")
+
+    colA, colB = st.columns(2)
+
+    with colA:
+        st.metric("Total Records", f"{total_count:,}")
+
+    with colB:
+        st.metric("Stations Shown", unique_station)
+
+    st.metric(
+        "Top Station",
+        top_station_name,
+        f"{top_value:,} records"
+    )
+
+# Centered AQI Distribution
+sp1, col_center, sp2 = st.columns([1,2,1])
+
+with col_center:
+    show_aqi_distribution(filtered_df, category_colors)
+
+st.markdown("---")
+
+st.subheader("AQI Category Distribution per Station")
+
+# Low | Moderate | High
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    show_top_station(filtered_df, "Low Pollution", category_colors)
+
 with col2:
-    for category in ["Good", "Moderate"]:
-        top_df = get_top_stations_by_category(filtered_df, category)
-
-        color = category_colors.get(category, "#000000")
-
-        # 🔹 Colored Title
-        st.markdown(
-            f"<h4 style='color:{color}; margin-bottom:8px;'>{category}</h4>",
-            unsafe_allow_html=True
-        )
-
-        if top_df.empty:
-            st.info("No data")
-        else:
-            palette = [color] + ["#D3D3D3"] * (len(top_df) - 1)
-
-            fig, ax = plt.subplots(figsize=(5,3))
-            sns.barplot(
-                data=top_df,
-                x="count",
-                y="station",
-                palette=palette,
-                ax=ax
-            )
-            ax.set_xlabel("")
-            ax.set_ylabel("")
-            plt.tight_layout()
-            st.pyplot(fig)
+    show_top_station(filtered_df, "Moderate Pollution", category_colors)
 
 with col3:
-    for category in ["Unhealthy", "Hazardous"]:
-        top_df = get_top_stations_by_category(filtered_df, category)
-
-        color = category_colors.get(category, "#000000")
-
-        st.markdown(
-            f"<h4 style='color:{color}; margin-bottom:8px;'>{category}</h4>",
-            unsafe_allow_html=True
-        )
-
-        if top_df.empty:
-            st.info("No data")
-        else:
-            palette = [color] + ["#D3D3D3"] * (len(top_df) - 1)
-
-            fig, ax = plt.subplots(figsize=(5,3))
-            sns.barplot(
-                data=top_df,
-                x="count",
-                y="station",
-                palette=palette,
-                ax=ax
-            )
-            ax.set_xlabel("")
-            ax.set_ylabel("")
-            plt.tight_layout()
-            st.pyplot(fig)
+    show_top_station(filtered_df, "High Pollution", category_colors)
 
 # TIME OF DAY ANALYSIS
 st.markdown(
@@ -401,7 +440,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-time_order = ["pagi", "siang", "sore", "malam"]
+time_order = ["Pagi", "Siang", "Sore", "Malam"]
 
 time_df = (
     filtered_df.groupby("waktu")["PM2.5"]
