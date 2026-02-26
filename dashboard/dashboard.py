@@ -160,17 +160,6 @@ with col3:
         unsafe_allow_html=True
     )
 
-# DAILY TREND
-st.markdown(
-    """
-    <h1 style="text-align:center; margin-top:40px; margin-bottom:20px;">
-        Daily PM2.5 Trend
-    </h1>
-    """,
-    unsafe_allow_html=True
-)
-st.line_chart(daily_df, x="datetime", y="avg_pm25", use_container_width=True)
-
 # YEARLY & MONTHLY TREND
 st.markdown(
     """
@@ -182,12 +171,13 @@ st.markdown(
 )
 
 yearly_df = aggregate_pm25(filtered_df, "Y")
+yearly_df["datetime"] = yearly_df["datetime"].dt.year.astype(str)
 
 col1, col2 = st.columns(2)
 
 with col1:
     st.markdown("### Yearly Trend")
-    st.line_chart(yearly_df, x="datetime", y="avg_pm25", use_container_width=True)
+    st.bar_chart(yearly_df, x="datetime", y="avg_pm25", use_container_width=True)
 
 with col2:
     st.markdown("### Monthly Trend")
@@ -197,8 +187,86 @@ with col2:
 st.markdown(
     """
     <h1 style="text-align:center; margin-top:40px; margin-bottom:20px;">
-        Worst & Best Stations
+        Station Analysis
     </h1>
+    """,
+    unsafe_allow_html=True
+)
+## STATION CONTRIBUTION
+st.markdown(
+    """
+    <h3 style="text-align:center; margin-bottom:25px;">
+        Percentage Contribution of PM2.5 by Station
+    </h3>
+    """,
+    unsafe_allow_html=True
+)
+
+station_contribution = (
+    filtered_df.groupby("station")["PM2.5"]
+    .mean()
+    .reset_index()
+)
+
+total_pm25 = station_contribution["PM2.5"].sum()
+station_contribution["percentage"] = (
+    station_contribution["PM2.5"] / total_pm25 * 100
+)
+
+station_contribution = station_contribution.sort_values(
+    "percentage", ascending=False
+)
+
+top_station = station_contribution.iloc[0]
+lowest_station = station_contribution.iloc[-1]
+
+# ===== CENTER LAYOUT =====
+sp1, col_main, sp2 = st.columns([1, 3, 1])
+
+with col_main:
+    col_chart, col_detail = st.columns([2, 1])
+
+    # -------- PIE CHART --------
+    with col_chart:
+        fig, ax = plt.subplots(figsize=(4.5,4.5))
+
+        ax.pie(
+            station_contribution["percentage"],
+            labels=station_contribution["station"],
+            autopct="%1.1f%%",
+            startangle=90,
+            textprops={'fontsize':8}
+        )
+
+        ax.axis("equal")
+        plt.tight_layout()
+        st.pyplot(fig)
+
+    # -------- DETAIL PANEL --------
+    with col_detail:
+        st.metric(
+            "Total Stations",
+            station_contribution["station"].nunique()
+        )
+
+        st.metric(
+            "Highest Contributor",
+            top_station["station"],
+            f"{top_station['percentage']:.2f}%"
+        )
+
+        st.metric(
+            "Lowest Contributor",
+            lowest_station["station"],
+            f"{lowest_station['percentage']:.2f}%"
+        )
+
+## STATION ANALYSIS SECTION
+st.markdown(
+    """
+    <h3 style="text-align:center; margin-top:40px; margin-bottom:20px;">
+        Worst & Best Stations
+    </h3>
     """,
     unsafe_allow_html=True
 )
